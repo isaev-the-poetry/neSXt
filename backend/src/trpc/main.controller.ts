@@ -3,11 +3,26 @@ import * as trpcExpress from '@trpc/server/adapters/express';
 import { z } from 'zod';
 import { BaseTrpcController } from './base.controller';
 import { Query, Mutation, Input, Output } from './decorators';
+import { AuthController } from '../auth/auth.controller';
+import { TrpcService } from './trpc.service';
 
 @Injectable()
 export class MainController extends BaseTrpcController {
-  // Создаем роутер автоматически из декорированных методов
-  appRouter = this.createRouter();
+  constructor(
+    private authController: AuthController,
+    trpcService: TrpcService
+  ) {
+    super(trpcService);
+  }
+
+  // Создаем основной роутер с подключением auth роутера
+  appRouter = this.trpc.router({
+    // Основные методы
+    ...this.createRouter()._def.record,
+    
+    // Auth методы под префиксом auth
+    auth: this.authController.authRouter,
+  });
 
   @Query()
   getHello() {

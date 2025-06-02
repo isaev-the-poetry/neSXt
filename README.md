@@ -1,7 +1,12 @@
-# NeSXt = NestJS + NextJS over TRPC с Декораторами.
+# NeSXt = NestJS + NextJS over TRPC с Декораторами и Авторизацией
+
+Мне очень хотелось иметь в архитектуре упорядоченность, модульность и DI от NestJs, при этом для frontend очень нужны функции NextJs, а еще очень
+хотелось иметь typesafe потоки данных.
 
 Мне очень хотелось иметь в архитектуре упорядоченность, модульность и DI от NestJs, при этом для современного frontend просто необходимы SSR, SSG, Router (NextJs), и конечно же typesafe коммуникация между ними.
 В этом starter репозитории я связал эти фреймворки через trpc, импортировал общий роутер во frontend и добавил декораторы, для более нативного вида в NestJS. 
+
+**🆕 Добавлена авторизация через Google OAuth с TRPC методами!**
 
 ## 🚀 Быстрый старт
 
@@ -22,7 +27,7 @@ npm run dev
 - **Backend**: http://localhost:4000
 - **TRPC Endpoint**: http://localhost:4000/trpc
 
-## ✨ TRPC Декораторы
+## ✨ TRPC Декораторы + Авторизация
  
 ### Пример использования декораторов:
 
@@ -64,6 +69,29 @@ export class MainController extends BaseTrpcController {
 }
 ```
 
+### Авторизация через TRPC:
+
+```typescript
+@Injectable()
+export class AuthController extends BaseTrpcController {
+  @Mutation()
+  @Input(z.object({ token: z.string().optional() }))
+  @Output(z.object({
+    success: z.boolean(),
+    message: z.string(),
+    user: z.object({...}).optional(),
+  }))
+  async signIn({ input }) {
+    return await this.authService.signIn(input.token);
+  }
+
+  @Mutation()
+  async signOut() {
+    return await this.authService.signOut();
+  }
+}
+```
+
 ### Доступные декораторы:
 
 - **@Query()** - для получения данных
@@ -78,14 +106,21 @@ neSXt/
 ├── package.json          # Корневой package.json с workspaces
 ├── backend/              # NestJS приложение
 │   ├── src/
+│   │   ├── auth/         # 🆕 Модуль авторизации
+│   │   │   ├── auth.controller.ts    # TRPC контроллер авторизации
+│   │   │   ├── auth.service.ts       # Сервис авторизации
+│   │   │   ├── auth-rest.controller.ts # REST контроллер для OAuth
+│   │   │   ├── google.strategy.ts    # Google OAuth стратегия
+│   │   │   ├── auth.types.ts         # TypeScript типы
+│   │   │   └── auth.module.ts        # Модуль авторизации
 │   │   ├── trpc/         # TRPC конфигурация и контроллеры
-│   │   │   ├── decorators/ # 🆕 TRPC декораторы
+│   │   │   ├── decorators/ # TRPC декораторы
 │   │   │   │   ├── procedure.decorators.ts
 │   │   │   │   ├── input-output.decorators.ts
 │   │   │   │   ├── trpc-metadata.ts
 │   │   │   │   └── index.ts
-│   │   │   ├── base.controller.ts # 🆕 Базовый класс контроллера
-│   │   │   ├── main.controller.ts # 🔄 Главный TRPC контроллер
+│   │   │   ├── base.controller.ts # Базовый класс контроллера
+│   │   │   ├── main.controller.ts # Главный TRPC контроллер
 │   │   │   ├── trpc.module.ts
 │   │   │   └── trpc.service.ts
 │   │   ├── prisma/       # Prisma сервис
@@ -95,12 +130,18 @@ neSXt/
 │   │   └── main.ts
 │   ├── prisma/
 │   │   └── schema.prisma # Схема базы данных SQLite
+│   ├── env.example       # 🆕 Пример переменных окружения
 │   └── package.json
 └── frontend/             # NextJS приложение
     ├── src/
+    │   ├── contexts/     # 🆕 React контексты
+    │   │   └── AuthContext.tsx # Контекст авторизации
     │   ├── pages/        # Страницы NextJS
-    │   │   ├── _app.tsx  # TRPC провайдер
-    │   │   └── index.tsx # 🔄 Обновлен с примерами декораторов
+    │   │   ├── auth/     # 🆕 Страницы авторизации
+    │   │   │   ├── callback.tsx # OAuth callback
+    │   │   │   └── error.tsx    # Ошибки авторизации
+    │   │   ├── _app.tsx  # TRPC провайдер + Auth провайдер
+    │   │   └── index.tsx # Обновлен с примерами авторизации
     │   └── utils/        # TRPC клиент
     │       └── trpc.ts
     └── package.json
@@ -108,11 +149,12 @@ neSXt/
 
 ## 🛠 Технологии
 
-- **Backend**: NestJS 10.x + Prisma 5.x + SQLite + TRPC 10.x + **Собственные декораторы**
-- **Frontend**: NextJS 14.x + TRPC Client 10.x + React Query
+- **Backend**: NestJS 10.x + Prisma 5.x + SQLite + TRPC 10.x + **Собственные декораторы** + **Google OAuth**
+- **Frontend**: NextJS 14.x + TRPC Client 10.x + React Query + **Auth Context**
 - **Language**: TypeScript
 - **Database**: SQLite (через Prisma)
 - **Validation**: Zod
+- **Authentication**: Google OAuth 2.0 + JWT
 
 ## 📋 Доступные команды
 
@@ -145,46 +187,78 @@ npx prisma db push         # Применение изменений схемы
 
 Backend предоставляет следующие методы через TRPC:
 
+**Основные методы:**
 - **`getHello()`** - возвращает строку приветствия
 - **`getMessageById(id: string)`** - возвращает персонализированное сообщение 
 - **`createUser(data: {name, email})`** - создает нового пользователя
+
+**Auth методы:**
+- **`auth.getAuthStatus()`** - статус сервиса авторизации
+- **`auth.signIn(token?: string)`** - вход в систему
+- **`auth.signOut()`** - выход из системы
+- **`auth.getAllUsers()`** - список всех пользователей
+- **`auth.getGoogleAuthUrl()`** - URL для Google OAuth
 
 ### Пример использования во frontend
 
 ```typescript
 // В React компоненте
 import { trpc } from '../utils/trpc';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Home() {
+  const { user, isAuthenticated, logout } = useAuth();
+
   // Query без параметров
   const { data: hello } = trpc.getHello.useQuery();
 
   // Query с параметрами и валидацией
   const { data: message } = trpc.getMessageById.useQuery('user123');
 
-  // Mutation с валидацией
-  const createUser = trpc.createUser.useMutation();
+  // Auth queries
+  const { data: authStatus } = trpc.auth.getAuthStatus.useQuery();
+  const { data: googleAuthUrl } = trpc.auth.getGoogleAuthUrl.useQuery();
 
-  const handleCreate = () => {
-    createUser.mutate({
-      name: 'John Doe',
-      email: 'john@example.com'
-    });
+  // Mutations
+  const createUser = trpc.createUser.useMutation();
+  const signOut = trpc.auth.signOut.useMutation();
+
+  const handleGoogleSignIn = () => {
+    if (googleAuthUrl?.authUrl) {
+      window.location.href = googleAuthUrl.authUrl;
+    }
   };
 
   return (
     <div>
-      <p>{hello}</p> {/* "Hello World from TRPC!" */}
-      <p>{message?.message}</p> {/* "Hello user with ID: user123!" */}
-      <button onClick={handleCreate}>Create User</button>
+      {isAuthenticated ? (
+        <div>
+          <p>Привет, {user?.name}!</p>
+          <button onClick={() => signOut.mutate()}>Выйти</button>
+        </div>
+      ) : (
+        <button onClick={handleGoogleSignIn}>Войти через Google</button>
+      )}
     </div>
   );
 }
 ```
 
+## 🔐 Настройка Google OAuth
+
+Для полноценной работы авторизации необходимо настроить Google OAuth credentials.
+
+**Быстрая настройка:**
+1. Скопируйте `backend/env.example` в `backend/.env`
+2. Следуйте инструкциям в [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
+3. Раскомментируйте `GoogleStrategy` в `backend/src/auth/auth.module.ts`
+4. Перезапустите приложение
+
 ## ✨ Особенности
 
 - ✅ **TRPC Декораторы** - NestJS-стиль для TRPC методов
+- ✅ **Google OAuth** - полноценная авторизация через Google
+- ✅ **JWT токены** - безопасная аутентификация
 - ✅ **Type-safe связь** между frontend и backend через TRPC
 - ✅ **CORS настроен** для работы между приложениями
 - ✅ **Prisma с SQLite** базой данных
@@ -193,6 +267,7 @@ export default function Home() {
 - ✅ **TypeScript везде** с полной типизацией
 - ✅ **Автоматическая валидация** входных и выходных данных
 - ✅ **React Query интеграция** для кеширования
+- ✅ **Auth Context** для управления состоянием авторизации
 
 ## 🔄 Разработка
 
@@ -221,19 +296,30 @@ const { data } = trpc.getUserProfile.useQuery({ userId: '123' });
 // data имеет тип { profile: { name: string, age: number } }
 ```
 
-### Преимущества контроллерного подхода
+### Добавление нового auth метода
 
-- **Читаемость**: Код выглядит как обычные NestJS контроллеры
-- **Валидация**: Автоматическая валидация через Zod
-- **Типизация**: Полная типизация без дополнительных настроек
-- **NestJS стиль**: Привычный подход с контроллерами для NestJS разработчиков
+1. **Добавьте в AuthController**:
+
+```typescript
+@Query()
+@Output(z.object({ isAdmin: z.boolean() }))
+checkAdminStatus() {
+  return { isAdmin: false };
+}
+```
+
+2. **Используйте в frontend**:
+
+```typescript
+const { data } = trpc.auth.checkAdminStatus.useQuery();
+```
 
 ## 🚀 Деплой
 
 Для деплоя в продакшн:
 
 1. Соберите приложения: `npm run build`
-2. Настройте переменные окружения
+2. Настройте переменные окружения (включая Google OAuth для production)
 3. Запустите: `npm run start`
 
 ## 📝 Лицензия
@@ -242,4 +328,4 @@ MIT
 
 ---
 
-**Создано с ❤️ используя NestJS, NextJS, TRPC и собственные декораторы в стиле контроллеров** 
+**Создано с ❤️ используя NestJS, NextJS, TRPC, Google OAuth и собственные декораторы в стиле контроллеров**
