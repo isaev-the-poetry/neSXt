@@ -4,8 +4,9 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { AuthRestController } from './auth-rest.controller';
-// import { GoogleStrategy } from './google.strategy';
+import { GoogleStrategy } from './google.strategy';
 import { TrpcService } from '../trpc/trpc.service';
+import "dotenv/config";
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { TrpcService } from '../trpc/trpc.service';
   providers: [
     AuthService,
     AuthController,
-    // GoogleStrategy, // Временно отключено
+    GoogleStrategy,
     TrpcService, // Нужен для BaseTrpcController
   ],
   exports: [AuthService, AuthController],
