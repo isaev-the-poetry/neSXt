@@ -9,8 +9,12 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
     "start": "concurrently \"npm run start:prod --workspace=backend\" \"npm run start --workspace=frontend\"",
+    "stop": "lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true; lsof -ti :3001 2>/dev/null | xargs kill -9 2>/dev/null || true; lsof -ti :3002 2>/dev/null | xargs kill -9 2>/dev/null || true; lsof -ti :4000 2>/dev/null | xargs kill -9 2>/dev/null || true; echo 'All processes stopped'",
+    "restart": "npm run stop && npm run dev",
     "clean": "rm -rf node_modules backend/node_modules frontend/node_modules",
     "install:all": "npm install",
     "git push github": "ssh-add ~/.ssh/github; git push -u origin main"

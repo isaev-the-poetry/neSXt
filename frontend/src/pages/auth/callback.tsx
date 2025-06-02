@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import Cookies from 'js-cookie';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -14,11 +15,21 @@ export default function AuthCallback() {
     }
 
     const { token, user } = router.query;
+    
+    console.log('[AuthCallback] Received query params:', { 
+      token: token ? '***' + (token as string).slice(-10) : 'none', 
+      user: user ? 'present' : 'none' 
+    });
+    
+    // Проверяем, установил ли backend cookie
+    const backendCookie = Cookies.get('auth-token');
+    console.log('[AuthCallback] Backend cookie:', backendCookie ? '***' + backendCookie.slice(-10) : 'none');
 
     if (token && user) {
       try {
         processedRef.current = true;
         const userData = JSON.parse(user as string);
+        console.log('[AuthCallback] Parsed user data:', userData.email);
         login(token as string, userData);
         router.push('/');
       } catch (error) {
@@ -28,6 +39,7 @@ export default function AuthCallback() {
       }
     } else if (!token || !user) {
       processedRef.current = true;
+      console.error('[AuthCallback] Missing authentication data:', { token: !!token, user: !!user });
       router.push('/auth/error?message=Missing authentication data');
     }
   }, [router.query, router.isReady]);

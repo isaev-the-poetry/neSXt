@@ -27,13 +27,13 @@ import { GoogleStrategy } from './google.strategy';   // ✅ Должно быт
 
 ### 2. Включите OAuth guards
 
-В файле `backend/src/auth/auth-rest.controller.ts`:
+В файле `backend/src/auth/oauth.controller.ts`:
 
 ```typescript
 // import { AuthGuard } from '@nestjs/passport'; // ❌ Убрать комментарий
 import { AuthGuard } from '@nestjs/passport';   // ✅ Должно быть так
 
-export class AuthRestController {
+export class OAuthController {
   @Get('google')
   // @UseGuards(AuthGuard('google')) // ❌ Убрать комментарий
   @UseGuards(AuthGuard('google'))   // ✅ Должно быть так
@@ -88,3 +88,10 @@ npm run dev
 2. Нажмите "Войти через Google"
 3. Войдите в ваш Google аккаунт
 4. Должны быть перенаправлены обратно как авторизованный пользователь 
+
+В файле `backend/src/auth/oauth.controller.ts`:
+
+```typescript
+@Controller('auth')
+export class OAuthController {
+} 

@@ -1,28 +1,61 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { AuthRestController } from './auth-rest.controller';
+import { AuthTRPCController } from './auth.controller.trpc';
+import { OAuthController } from './oauth.controller';
 import { GoogleStrategy } from './google.strategy';
-import { TrpcService } from '../trpc/trpc.service';
-import "dotenv/config";
+import { PrismaModule } from '../prisma/prisma.module';
+import { TrpcModule } from '../trpc/trpc.module';
+import { AuthMiddleware, AuthGuard, OptionalAuthGuard } from './auth.middleware';
 
 @Module({
   imports: [
-    PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '7d' },
+    ConfigModule,
+    PrismaModule,
+    forwardRef(() => TrpcModule),
+    PassportModule.register({
+      defaultStrategy: 'jwt',
+      session: false,
+    }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET', 'your-secret-key-change-this'),
+        signOptions: {
+          expiresIn: '7d',
+          issuer: 'nesxt-auth',
+          audience: 'nesxt-users',
+        },
+      }),
+      inject: [ConfigService],
     }),
   ],
-  controllers: [AuthRestController],
+  controllers: [
+    OAuthController, // OAuth контроллер для OAuth flow
+  ],
   providers: [
     AuthService,
-    AuthController,
+    AuthTRPCController, // TRPC контроллер (новый)
     GoogleStrategy,
-    TrpcService, // Нужен для BaseTrpcController
+    AuthGuard,
+    OptionalAuthGuard,
+    AuthMiddleware,
   ],
-  exports: [AuthService, AuthController],
+  exports: [
+    AuthService,
+    AuthTRPCController,
+    AuthGuard,
+    OptionalAuthGuard,
+    AuthMiddleware,
+    JwtModule,
+  ],
 })
-export class AuthModule {} 
+export class AuthModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Применяем middleware аутентификации ко всем маршрутам
+    consumer.apply(AuthMiddleware).forRoutes('*');
+  }
+} 

@@ -16,7 +16,7 @@ export default function Home() {
   // Auth Queries
   const { data: authStatus } = trpc.auth.getAuthStatus.useQuery();
   const { data: googleAuthUrl } = trpc.auth.getGoogleAuthUrl.useQuery();
-  const { data: allUsers } = trpc.auth.getAllUsers.useQuery();
+  const { data: allUsers } = trpc.auth.getAllUsers.useQuery({});
 
   // TRPC Mutations
   const createUserMutation = trpc.createUser.useMutation();
@@ -40,8 +40,8 @@ export default function Home() {
   };
 
   const handleGoogleSignIn = () => {
-    if (googleAuthUrl?.authUrl) {
-      window.location.href = googleAuthUrl.authUrl;
+    if (googleAuthUrl) {
+      window.location.href = googleAuthUrl;
     }
   };
 
@@ -193,10 +193,10 @@ export default function Home() {
 
               <div style={{ marginBottom: '1rem' }}>
                 <h3>auth.getAllUsers</h3>
-                <p>Зарегистрированные пользователи: {allUsers?.length || 0}</p>
-                {allUsers && allUsers.length > 0 && (
+                <p>Зарегистрированные пользователи: {allUsers?.users?.length || 0}</p>
+                {allUsers?.users && allUsers.users.length > 0 && (
                   <div style={{ maxHeight: '200px', overflow: 'auto', background: 'white', padding: '10px', borderRadius: '4px' }}>
-                    {allUsers.map((user) => (
+                    {allUsers.users.map((user: any) => (
                       <div key={user.id} style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
                         <strong>{user.name}</strong> ({user.email})
                         {user.avatar && (

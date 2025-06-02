@@ -15,10 +15,14 @@
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "admin:make": "node scripts/make-admin.js",
+    "admin:quick": "node scripts/quick-admin.js",
+    "admin:list": "node scripts/quick-admin.js --list"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/passport": "^11.0.5",

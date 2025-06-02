@@ -7,11 +7,123 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
+// Основная таблица пользователей (NextAuth style)
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  
+  // Дополнительные поля
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Связи
+  accounts      Account[]
+  tokens        UserToken[]
+  sessions      UserSession[]
+  userRoles     UserRole[] // Связь с ролями через промежуточную таблицу
+
+  @@map("users")
+}
+
+// Промежуточная таблица для ролей пользователей
+// Роли: USER, MANAGER, ADMIN
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  role   String // USER | MANAGER | ADMIN
+
+  // Метаданные
+  assignedAt DateTime @default(now())
+  assignedBy String?  // ID пользователя, который назначил роль
+
+  // Связи
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Уникальность: один пользователь не может иметь одну роль дважды
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+// Аккаунты провайдеров (NextAuth style)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String  // oauth, email, credentials
+  provider          String  // google, github, discord, etc.
+  providerAccountId String  // ID в системе провайдера
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  
+  // Дополнительные метаданные
+  providerData      String? // JSON с полными данными от провайдера
+  lastUsed          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Связи
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Уникальность: один аккаунт провайдера = один наш пользователь
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// JWT токены пользователей
+model UserToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String   @default("ACCESS") // ACCESS, REFRESH, RESET, VERIFY
+  
+  // Метаданные токена
+  isActive  Boolean  @default(true)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Дополнительная информация
+  userAgent String?
+  ipAddress String?
+  deviceInfo String? // JSON с информацией об устройстве
+
+  // Связи
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_tokens")
+}
+
+// Сессии пользователей (NextAuth style + наши дополнения)
+model UserSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  // Дополнительные метаданные
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastAccessAt DateTime @default(now())
+  
+  // Информация о сессии
+  userAgent    String?
+  ipAddress    String?
+  deviceInfo   String?
+
+  // Связи
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 } 
