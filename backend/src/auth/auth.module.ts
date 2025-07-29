@@ -7,14 +7,14 @@ import { AuthService } from './auth.service';
 import { AuthTRPCController } from './auth.controller.trpc';
 import { OAuthController } from './oauth.controller';
 import { GoogleStrategy } from './google.strategy';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DatabaseModule } from '../database/database.module';
 import { TrpcModule } from '../trpc/trpc.module';
 import { AuthMiddleware, AuthGuard, OptionalAuthGuard } from './auth.middleware';
 
 @Module({
   imports: [
     ConfigModule,
-    PrismaModule,
+    DatabaseModule,
     forwardRef(() => TrpcModule),
     PassportModule.register({
       defaultStrategy: 'jwt',
